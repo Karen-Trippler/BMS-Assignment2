@@ -12,8 +12,45 @@ knitr::opts_chunk$set(echo = TRUE)
 ## (a)
 
 ```{r}
+#loading the required library
 library(data.table)
+
+#loading the files
 lipids.dt <- data.table(read.delim("lipids.txt"))
+classes.dt <- data.table(read.delim("lipid-classes.txt"))
+
+#lipid classes can be found in the first column of lipids.dt
+#Finding all lipids PC and assignment to new column lipid.class (42)
+lipids.dt[grep("^[Pp]C", lipid.species), lipid.class := classes.dt[CE == "PC", Cholesterol.esters]]
+#Finding all Cer (11)
+lipids.dt[grep("^[Cc]er|CER", lipid.species), lipid.class := classes.dt[CE == "Cer", Cholesterol.esters]]
+#Finding all DAG (16)
+lipids.dt[grep("^[Dd]ag|DAG", lipid.species), lipid.class := classes.dt[CE == "DAG", Cholesterol.esters]]
+#Finding all LPC (13)
+lipids.dt[grep("^[Ll]pc|LPC", lipid.species), lipid.class := classes.dt[CE == "LPC", Cholesterol.esters]]
+#Finding all LPE (3)
+lipids.dt[grep("^[Ll]pe|LPE", lipid.species), lipid.class := classes.dt[CE == "LPE", Cholesterol.esters]]
+#Finding all PE (25)
+lipids.dt[grep("^[Pp]e|^PE", lipid.species), lipid.class := classes.dt[CE == "PE", Cholesterol.esters]]
+#Finding all PS (8)
+lipids.dt[grep("^[Pp]s|^PS", lipid.species), lipid.class := classes.dt[CE == "PS", Cholesterol.esters]]
+#Finding all SM (0)
+lipids.dt[grep("[Ss]m|SM", lipid.species)]
+#Finding all TAG (147)
+lipids.dt[grep("[Tt]ag|TAG", lipid.species), lipid.class := classes.dt[CE == "TAG", Cholesterol.esters]]
+
+#it can be seen that 9 rows are still unoccupied (correspond to CE)
+lipids.dt[is.na(lipid.class)]
 
 ```
+After adding all classes provided in the classes.txt file, it can be seen that one class is missing and 9 rows with the abbreviation CE could not be annotated. Following the shorthand notation of lipids published by Liebisch et al. in 2013 CE corresponds to Cholesteryl ester (Liebisch et al., 2013). I added this class manually.
+```{r}
+#manual addition of Chelesteryl ester
+lipids.dt[grep("[C]e|CE", lipid.species), lipid.class := "Cholesteryl ester"]
+#test that all lipids have a class
+stopifnot(!is.na(lipids.dt$lipid.class))
 
+#count the number of entries corresponding to each class (one class missing only 8!)
+lipids.dt[, .(count = .N), lipid.class]
+
+```
