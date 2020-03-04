@@ -45,12 +45,18 @@ lipids.dt[is.na(lipid.class)]
 ```
 After adding all classes provided in the classes.txt file, it can be seen that one class is missing and 9 rows with the abbreviation CE could not be annotated. Following the shorthand notation of lipids published by Liebisch et al. in 2013 CE corresponds to Cholesteryl ester (Liebisch et al., 2013). I added this class manually.
 ```{r}
-#manual addition of Chelesteryl ester
-lipids.dt[grep("[C]e|CE", lipid.species), lipid.class := "Cholesteryl ester"]
+#manual addition of Cholesteryl ester
+lipids.dt[grep("\\b[C]e\\b|\\bCE\\b", lipid.species), lipid.class := "Cholesteryl ester"]
 #test that all lipids have a class
 stopifnot(!is.na(lipids.dt$lipid.class))
 
 #count the number of entries corresponding to each class (one class missing only 8!)
 lipids.dt[, .(count = .N), lipid.class]
 
+```
+## (b)
+The Wald test has the form: z = slope/standard error. the slope is  ln(odds ratio).
+```{r}
+lipids.dt[lipid.class=="Phosphatidylcholines"]
+#compute it for every row individually? Or take the average?
 ```
