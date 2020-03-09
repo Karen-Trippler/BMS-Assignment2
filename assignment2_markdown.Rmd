@@ -60,3 +60,46 @@ The Wald test has the form: z = slope/standard error. the slope is  ln(odds rati
 lipids.dt[lipid.class=="Phosphatidylcholines"]
 #compute it for every row individually? Or take the average?
 ```
+## (c)
+## (d)
+## (e)
+## (f)
+
+# Problem 2
+## (a) Not sure how cross validation works. Is lambda already maximizing for AUC?
+```{r warning=FALSE}
+#loading the required libraries
+library(caret)
+library(pROC)
+library(glmnet)
+
+#load the data set
+wdbc2.dt <- fread("wdbc2.csv", stringsAsFactors = TRUE)
+
+#setting the seed
+set.seed(1)
+
+#create the data particioning
+train.idx <- createDataPartition(wdbc2.dt$diagnosis, p=0.7)
+
+#function from lab 4 to convert data tables into a matrix as expected by glmnet
+prepare.glmnet <- function(data, formula=~ .) {
+  ## create the design matrix to deal correctly with factor variables,
+  ## without losing rows containing NAs
+  old.opts <- options(na.action='na.pass')
+  x <- model.matrix(formula, data)
+  options(old.opts)
+  ## remove the intercept column, as glmnet will add one by default
+  x <- x[, -match("(Intercept)", colnames(x))]
+  return(x)
+}
+
+#separate desig matrix from outcomes
+ywdbc2.dt <- as.matrix(wdbc2.dt$diagnosis)
+xwdbc2.dt <- prepare.glmnet(wdbc2.dt[,!"diagnosis"])
+
+#fit ridge regression model with cross validation
+fit.ridge <- cv.glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial", alpha=0)
+#fit regression with lasso penalty
+fit.lasso <- cv.glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial")
+```
