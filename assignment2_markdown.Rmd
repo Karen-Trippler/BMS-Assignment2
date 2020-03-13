@@ -55,14 +55,87 @@ lipids.dt[, .(count = .N), lipid.class]
 
 ```
 ## (b)
-The Wald test has the form: z = slope/standard error. the slope is  ln(odds ratio).
+Since there are 9 lipid species in the table (including CE and exclusing SM), they are calculated as following:
 ```{r}
-lipids.dt[lipid.class=="Phosphatidylcholines"]
-#compute it for every row individually? Or take the average?
+#calculate the Wald test (t-distributed)
+lipids.dt[, "Wald.test(t.dist)":= round(((oddsratio-1)/se), 3)]
+
+#calculate the degress of freedom
+df <- 288-9-1
+
+#calculate the p-value based on the t-distribution
+lipids.dt[, "p.value.t" := signif(2*pt(abs(`Wald.test(t.dist)`), df, lower.tail = FALSE), 4)]
+
+#calculate the p-value based on the normal distribution
+lipids.dt[, "p.value.norm" := signif(2*pnorm(`Wald.test(t.dist)`, lower.tail = FALSE), 4)]
+
+#checking the table
+head(lipids.dt)
 ```
+Present some evidence to justify if the normal approximation is acceptable in this instance. (ANSWER)
+
 ## (c)
+```{r warning=FALSE}
+holm.bonferroni <- function(results.dt, alpha){
+  #copy and order the input dataframe
+  order.dt <- results.dt[order(p.value.t),]
+  
+  #looping through all sorted entries
+  for (row.idx in seq(1,nrow(order.dt))){
+    #calculate the threshhold value for the row
+    pcalc <- alpha/(276+1-row.idx)
+    #cat(pcalc)
+    #testing if the threshold is passed
+    if (pcalc >= order.dt[row.idx, p.value.t]) {
+      #threshold is not passed anymore and the loop breaks
+      lastidx <- row.idx
+      #cat(lastidx, "\n")
+      #cat("This is the pcalc ", pcalc)
+    } else {
+      #nothting happens when the pcalc gets too large
+    }
+  }
+  
+  #returning the subset of the ordered table
+  return(order.dt[1:lastidx])
+}
+
+```
 ## (d)
+```{r warning=FALSE}
+benjamini.hochberg <- function(results.dt, q){
+  q <- 0.01
+  #copy and order the input dataframe
+  order.dt <- results.dt[order(p.value.t),]
+  
+  #looping through all sorted entries
+  for (row.idx in seq(1,nrow(order.dt))){
+    pcalc <- (row.idx/276)*q
+    
+    #testing if the threshold is valid
+    if (pcalc > order.dt[row.idx, p.value.t]){
+      #assigning the indeces that pass the threshold
+      lastidx <- row.idx
+      #cat(lastidx, "\n")
+      #cat("This is the pcalc ", pcalc)
+    } else {
+      #pass as the threshold was passed
+    }
+    
+  }
+  
+  #return the subset in ascending p value order
+  return(order.dt[1:lastidx])
+  
+}
+
+```
 ## (e)
+```{r warning=FALSE}
+
+
+```
+
 ## (f)
 
 # Problem 2
