@@ -232,9 +232,9 @@ plot(fit.lasso, main="Lasso trajectories")
 
 Optimal AUC is given when lambda is at its minimum, ergo the maximum of cvm is the AUC corresponding to the optimal lambda
 ```{r}
-#lambda for ridge regression model
+#AUC for ridge regression model
 max(fit.cv.ridge$cvm)
-#lambda for lasso regression model
+#AUC for lasso regression model
 max(fit.cv.lasso$cvm)
 
 #AUC within 1 sd of the maximum
@@ -242,6 +242,47 @@ max(fit.cv.lasso$cvm)
 fit.cv.lasso$cvm[which(fit.cv.lasso$lambda == fit.cv.lasso$lambda.1se)]
 #ridge regression
 fit.cv.ridge$cvm[which(fit.cv.ridge$lambda == fit.cv.ridge$lambda.1se)]
+
+```
+## (c)
+```{r}
+
+#data table for ridge regression
+fit.ridge.dt <- data.table(model.lambda = signif(fit.cv.ridge$lambda,3),
+                           model.size = fit.cv.ridge$nzero,
+                           model.AUC = signif(fit.cv.ridge$cvm))
+
+#data table for lasso regression
+fit.lasso.dt <- data.table(model.lambda = signif(fit.cv.lasso$lambda,3),
+                           model.size = fit.cv.lasso$nzero,
+                           model.AUC = signif(fit.cv.lasso$cvm, 3))
+
+
+plot(fit.ridge.dt$model.lambda, fit.ridge.dt$model.AUC, 
+     col = ifelse(fit.cv.ridge$cvm == max(fit.cv.ridge$cvm), "red", "black"))
+
+plot(fit.lasso.dt$model.lambda, fit.lasso.dt$model.AUC,
+     col = ifelse(fit.cv.lasso$cvm == max(fit.cv.lasso$cvm), "red", "black"))
+
+```
+## (d)
+
+No specific model is specified so the assumption was made that a logistic regression model was meant.
+```{r}
+#import library
+library(MASS)
+
+#fit logistic regression model on same training data
+fit.log <- glm(diagnosis ~ ., data = wdbc2.dt[, !c("id")], family = "binomial", subset= train.idx )
+
+#perform backward elimination
+log.back <- stepAIC(fit.log, direction="back")
+
+#required coefficients with their estimate
+log.back$coefficients[-1] #excluding the intercept
+
+
+#HOW DO I STANDARDIZE THE COEFFICIENTS??????????
 
 ```
 
