@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Problem 1
 ## (a)
 
-```{r}
+```{r warning=FALSE}
 #loading the required library
 library(data.table)
 
@@ -176,7 +176,7 @@ results.dt[lipid.inter]
 ```
 
 # Problem 2
-## (a) Not sure how cross validation works. Is lambda already maximizing for AUC?
+## (a)
 ```{r warning=FALSE}
 #loading the required libraries
 library(caret)
@@ -190,7 +190,7 @@ wdbc2.dt <- fread("wdbc2.csv", stringsAsFactors = TRUE)
 set.seed(1)
 
 #create the data particioning
-train.idx <- createDataPartition(wdbc2.dt$diagnosis, p=0.7)
+train.idx <- createDataPartition(wdbc2.dt$diagnosis, p=0.7)$Resample1
 
 #function from lab 4 to convert data tables into a matrix as expected by glmnet
 prepare.glmnet <- function(data, formula=~ .) {
@@ -208,8 +208,40 @@ prepare.glmnet <- function(data, formula=~ .) {
 ywdbc2.dt <- as.matrix(wdbc2.dt$diagnosis)
 xwdbc2.dt <- prepare.glmnet(wdbc2.dt[,!"diagnosis"])
 
+
 #fit ridge regression model with cross validation
-fit.ridge <- cv.glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial", alpha=0)
+fit.ridge <- glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial", alpha=0, subset = train.idx)
 #fit regression with lasso penalty
-fit.lasso <- cv.glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial")
+fit.lasso <- glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial", subset = train.idx)
+
+#Plotting the trajectory of the coefficients
+plot(fit.cv.ridge, main="Ridge")
+plot(fit.cv.lasso, main="Lasso") 
+
+#learning by cross validation
+fit.cv.ridge <- cv.glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial", alpha=0, subset = train.idx)
+fit.cv.lasso <- cv.glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial", subset = train.idx)
+
+#plotting coefficients for lambda regression
+plot(fit.ridge, main="Ridge trajectories")
+plot(fit.lasso, main="Lasso trajectories")
+
+
 ```
+## (b)
+
+Optimal AUC is given when lambda is at its minimum, ergo the maximum of cvm is the AUC corresponding to the optimal lambda
+```{r}
+#lambda for ridge regression model
+max(fit.cv.ridge$cvm)
+#lambda for lasso regression model
+max(fit.cv.lasso$cvm)
+
+#AUC within 1 sd of the maximum
+#lasso regression
+fit.cv.lasso$cvm[which(fit.cv.lasso$lambda == fit.cv.lasso$lambda.1se)]
+#ridge regression
+fit.cv.ridge$cvm[which(fit.cv.ridge$lambda == fit.cv.ridge$lambda.1se)]
+
+```
+
