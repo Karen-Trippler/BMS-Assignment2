@@ -214,17 +214,18 @@ fit.ridge <- glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial", alpha=0, subset = t
 #fit regression with lasso penalty
 fit.lasso <- glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial", subset = train.idx)
 
-#Plotting the trajectory of the coefficients
-plot(fit.cv.ridge, main="Ridge")
-plot(fit.cv.lasso, main="Lasso") 
+#plotting coefficients for lambda regression
+plot(fit.ridge, main="Ridge trajectories")
+plot(fit.lasso, main="Lasso trajectories")
 
 #learning by cross validation
 fit.cv.ridge <- cv.glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial", alpha=0, subset = train.idx)
 fit.cv.lasso <- cv.glmnet(xwdbc2.dt, ywdbc2.dt, family="binomial", subset = train.idx)
 
-#plotting coefficients for lambda regression
-plot(fit.ridge, main="Ridge trajectories")
-plot(fit.lasso, main="Lasso trajectories")
+#Plotting the trajectory of the coefficients
+plot(fit.cv.ridge, main="Ridge")
+plot(fit.cv.lasso, main="Lasso") 
+
 
 
 ```
@@ -232,14 +233,24 @@ plot(fit.lasso, main="Lasso trajectories")
 
 Optimal AUC is given when lambda is at its minimum, ergo the maximum of cvm is the AUC corresponding to the optimal lambda
 ```{r}
-#AUC for ridge regression model
+#lambda for ridge regression model
 max(fit.cv.ridge$cvm)
-#AUC for lasso regression model
+#lambda for lasso regression model
 max(fit.cv.lasso$cvm)
+
+
+#AUC for best lambda for ridge regression
+fit.cv.ridge$cvm[which(fit.cv.ridge$lambda == fit.cv.ridge$lambda.min)]
+#AUC for best lambda for lasso regression
+fit.cv.lasso$cvm[which(fit.cv.lasso$lambda == fit.cv.lasso$lambda.min)]
+
+
 
 #AUC within 1 sd of the maximum
 #lasso regression
 fit.cv.lasso$cvm[which(fit.cv.lasso$lambda == fit.cv.lasso$lambda.1se)]
+
+
 #ridge regression
 fit.cv.ridge$cvm[which(fit.cv.ridge$lambda == fit.cv.ridge$lambda.1se)]
 
@@ -257,6 +268,8 @@ fit.lasso.dt <- data.table(model.lambda = signif(fit.cv.lasso$lambda,3),
                            model.size = fit.cv.lasso$nzero,
                            model.AUC = signif(fit.cv.lasso$cvm, 3))
 
+#test on test data???
+
 
 plot(fit.ridge.dt$model.lambda, fit.ridge.dt$model.AUC, 
      col = ifelse(fit.cv.ridge$cvm == max(fit.cv.ridge$cvm), "red", "black"))
@@ -272,8 +285,9 @@ No specific model is specified so the assumption was made that a logistic regres
 #import library
 library(MASS)
 
+
 #fit logistic regression model on same training data
-fit.log <- glm(diagnosis ~ ., data = wdbc2.dt[, !c("id")], family = "binomial", subset= train.idx )
+fit.log <- glm(diagnosis ~ ., data = wdbc2.dt[, !"id"], family = "binomial", subset= train.idx )
 
 #perform backward elimination
 log.back <- stepAIC(fit.log, direction="back")
@@ -281,8 +295,153 @@ log.back <- stepAIC(fit.log, direction="back")
 #required coefficients with their estimate
 log.back$coefficients[-1] #excluding the intercept
 
+length(log.back$coefficients[-1])
 
 #HOW DO I STANDARDIZE THE COEFFICIENTS??????????
 
 ```
+
+## (e)
+```{r}
+
+#difining the null model
+null.forward <- glm(diagnosis ~ 1, data=wdbc2.dt[, !"id"], family="binomial", subset = train.idx)
+
+#performing forward selection
+log.forward <- stepAIC(null.forward, scope=list(upper=fit.log), direction="forward")
+
+#no coefficients were selected and then later removed
+
+#final coefficients
+log.forward$coefficients[-1]
+
+length(log.forward$coefficients[-1])
+#how to standardize the coefficients
+
+#summary(log.forward)
+
+```
+## (f) 
+The best method for evaluation between the two models would be a log-likelihood test. However, since the two models are not nested, i.e. the forward selection model is not a special case of the backward elimination model, a log-likelihood analysis cannot  be performed. (see: https://www.statisticshowto.com/likelihood-ratio-tests/)
+Therefore, I decided to compare the models based on Pseudo R squared or McFadden's R squared which gives the ratio of log-likelihoods between the current model and the null model
+```{r}
+
+#null model has already been defined during forward selection : null.forward
+
+#McFadden's R squared for forward selection
+1-logLik(log.forward)/logLik(null.forward)
+
+#McFadden's R squared for backward elimination
+1-logLik(log.back)/logLik(null.back)
+
+
+
+```
+The backward model has a slightly better McFadden's score than the forward selection model. However, these differences are only minimal which might justify the selection of the coefficients selected during the forward selection model for future studies.
+
+## (g)
+```{r}
+#making the test set
+test <- wdbc2.dt[-train.idx]
+
+#forward selection predicted probabilities (right)
+pred.prob.forward <- predict(log.forward, newdata=wdbc2.dt[train.idx], type="response")
+
+#AUC for forward selection
+roc(wdbc2.dt$diagnosis[train.idx], pred.prob.forward, data=wdbc2.dt[-train.idx])$auc
+
+#predicted probabilities for backward elimination
+pred.prob.backward <- predict(log.back, newdata = wdbc2.dt[train.idx], type="response")
+
+#AUC for backward elimination
+roc(wdbc2.dt$diagnosis[train.idx], pred.prob.backward, data=wdbc2.dt[-train.idx, ])$auc
+
+```
+## (h)
+Ridge Regression AUC
+```{r}
+
+# ridge regression
+pred.prob.test.ridge <- predict(fit.cv.ridge, newx = xwdbc2.dt[-train.idx,], type = "response", s=fit.cv.ridge$lambda.1se)
+
+roc(wdbc2.dt$diagnosis[-train.idx], pred.prob.test.ridge, data=wdbc2.dt[train.idx])$auc
+
+```
+Lasso Regression AUC
+```{r}
+#lasso regression
+pred.prob.test.lasso <- predict(fit.cv.lasso, newx = xwdbc2.dt[-train.idx,], type = "response", s=fit.cv.lasso$lambda.1se)
+
+roc(wdbc2.dt$diagnosis[-train.idx], pred.prob.test.lasso, data=wdbc2.dt[train.idx])$auc
+
+```
+Backward Elimination AUC
+```{r}
+
+
+#backward elimination
+
+#predicted probabilities for backward elimination
+pred.prob.test.backward <- predict(log.back, newdata = wdbc2.dt[-train.idx], type="response")
+
+#AUC for backward elimination
+roc(wdbc2.dt$diagnosis[-train.idx], pred.prob.test.backward, data=wdbc2.dt[train.idx])$auc
+
+```
+Forward Selection AUC
+```{r}
+
+#forward selection
+
+#forward selection predicted probabilities (right)
+pred.prob.test.forward <- predict(log.forward, newdata=wdbc2.dt[-train.idx], type="response")
+
+#AUC for forward selection
+roc(wdbc2.dt$diagnosis[-train.idx], pred.prob.test.forward, data=wdbc2.dt[train.idx])$auc
+
+
+```
+
+Plotting the test AUC.
+```{r}
+#plotting the test AUC's
+roc(wdbc2.dt$diagnosis[-train.idx], pred.prob.test.forward, data=wdbc2.dt[train.idx],lagacy.axes=TRUE, plot = TRUE, lwd=1, main="Plot of Test AUC's", asp=NA)
+
+roc(wdbc2.dt$diagnosis[-train.idx], pred.prob.test.backward, data=wdbc2.dt[train.idx], plot = TRUE, add=TRUE, col="orange", lwd=1)
+
+roc(wdbc2.dt$diagnosis[-train.idx], as.vector(pred.prob.test.lasso), data=wdbc2.dt[train.idx], plot = TRUE, add=TRUE, col="red", lwd=1)
+
+roc(wdbc2.dt$diagnosis[-train.idx], as.vector(pred.prob.test.ridge), data=wdbc2.dt[train.idx], plot=TRUE, add=TRUE, col="blue", lwd=1)
+
+legend("bottomright", 
+       c("Forward Elimination", "Backward Elimination", "Lasso Regression", "Ridge Regression"),
+       fill = c("black", "orange", "red", "blue"))
+
+
+```
+Coparison between training and test AUC's:\n
+\n
+Ridge Regression:\n
+Training: 0.4345539\n
+Testing: 0.9895\n
+The training AUC is significantly smaller than the the testing AUC which is expected since ridge regression introduces a small bias to not overfit the model on the training set. Therefore, this behaviour is normal and expected.
+
+\n
+Lasso Regression:\n
+Training: 0.4504536\n
+Testing: 0.9915\n
+Similarly to the ridge regression, the lasso regression introduces a small bias to fit the test set better. Therefore, the training AUC is much greater than the test AUC. 
+\n
+
+Backward Elimination:\n
+Training: 0.9717\n
+Testing: 0.9855\n
+Even though this model does not overfit the data (since Training AUC < Testing AUC), the general performance compared to the other three models is lower. It seems that the elminiation of coefficients slightly adds to the performance of the model. This is in contrast to the McFadden R square test performed in part (f) showing that the McFadden's score is not a good way of comparing the forward and backward model.
+
+\n
+
+Forward Elimination:\n
+Training: 0.9891\n
+Testing:0.9911\n
+Similarly to the backward elimination model, the model is not overfit since the AUC increases from training to testing. 
 
