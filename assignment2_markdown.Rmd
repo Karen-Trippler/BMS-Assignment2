@@ -445,3 +445,81 @@ Training: 0.9891\n
 Testing:0.9911\n
 Similarly to the backward elimination model, the model is not overfit since the AUC increases from training to testing. 
 
+#Problem 3
+
+## (a)
+
+```{r}
+
+#read in the data table
+gdm.dt <- data.table(read.delim("GDM.raw.txt"))
+
+#separating the rsIDs and coded allele counts
+snp.allele.dt <- gdm.dt[, !c("ID", "sex", "pheno")]
+
+#imputing the empty fields to the mean 
+for (SNP.ref in colnames(snp.allele.dt)) {
+  #the mean is rounded to the nearest whole number to get a count of 0,1 or 2
+  avrg.allele <- round(mean(gdm.dt[[SNP.ref]], na.rm = TRUE))
+  #assigning the average to the NA fiels in that column
+  gdm.dt[which(is.na(gdm.dt[[SNP.ref]])==TRUE)] <- avrg.allele
+}
+
+```
+## (b)
+```{r}
+
+
+univ.glm.test <- function(x,y, order=FALSE){
+  #x is a data table
+  #y is a binary outcome vector
+  
+  #TESTETDTEST
+  x<-snp.allele.dt
+  y<-gdm.dt$pheno
+  
+  stopifnot(nrow(x)==length(y))
+  
+  #output.dt <- data.table(SNP.name = NA, reg.coeff = NA, odds.ratio = NA, sd = NA, p.value = NA)
+  
+  SNP.names.vect <- c()
+  intercept.vect <- c()
+  slope.vect <- c()
+  odds.ratio.vect <- c()
+  sd.vect <- c()
+  p.value.vect <- c()
+  
+  for (col in colnames(x)){
+    #appending the column name
+    SNP.names.vect <- c(SNP.names.vect, col)
+    
+    #reformatting the column of the dataframe to fit a model
+    x.vect <- as.vector(unlist(x[[col]]))
+    #fitting the model
+    model <- glm(y ~ x.vect, family="binomial")
+    
+    #adding the intercept and slope to the prepared vectors
+    intercept.vect <- c(intercept.vect, summary(model)$coefficients[1])
+    slope.vect <- c(slope.vect, summary(model)$coefficients[2])
+    
+    #adding the odds ratio
+    
+    #adding the standard error
+    
+    #adding the p-value
+    
+    #constructing the output dataframe
+    
+    #order the table if requested
+    
+    
+  }
+  
+
+  
+  
+  
+  
+}
+```
+
