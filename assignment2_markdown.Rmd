@@ -298,6 +298,7 @@ log.back$coefficients[-1] #excluding the intercept
 length(log.back$coefficients[-1])
 
 #HOW DO I STANDARDIZE THE COEFFICIENTS??????????
+#multiply by standard deviation of their associative predictor (see lab 5)
 
 ```
 
@@ -454,16 +455,24 @@ Similarly to the backward elimination model, the model is not overfit since the 
 #read in the data table
 gdm.dt <- data.table(read.delim("GDM.raw.txt"))
 
-#separating the rsIDs and coded allele counts
-snp.allele.dt <- gdm.dt[, !c("ID", "sex", "pheno")]
 
-#imputing the empty fields to the mean 
-for (SNP.ref in colnames(snp.allele.dt)) {
-  #the mean is rounded to the nearest whole number to get a count of 0,1 or 2
-  avrg.allele <- round(mean(gdm.dt[[SNP.ref]], na.rm = TRUE))
-  #assigning the average to the NA fiels in that column
-  gdm.dt[which(is.na(gdm.dt[[SNP.ref]])==TRUE)] <- avrg.allele
+
+#separating the rsIDs and coded allele counts
+colnames.list <- colnames(gdm.dt[, !c("ID", "sex", "pheno")])
+snp.allele.dt <- as.data.table(matrix(unlist(lapply(colnames.list, function(x){strsplit(x,"_")})), ncol=2, byrow = TRUE))
+colnames(snp.allele.dt)<- c("rsID","ref.allele")
+snp.allele.dt[,coded.allele:=colnames(gdm.dt[, !c("ID", "sex", "pheno")])]
+ 
+
+#impute to the mean
+for (SNP.ref in colnames(gdm.dt[, !c("ID", "sex", "pheno")])) {
+  #find missing values
+  na.idx <- which(is.na(gdm.dt[[SNP.ref]])==TRUE)
+  #assigning the mean
+  gdm.dt[[SNP.ref]][na.idx] <- round(mean(gdm.dt[[SNP.ref]], na.rm = TRUE))
 }
+
+
 
 ```
 ## (b)
@@ -474,16 +483,11 @@ univ.glm.test <- function(x,y, order=FALSE){
   #x is a data table
   #y is a binary outcome vector
   
-  #TESTETDTEST
-  x<-snp.allele.dt
-  y<-gdm.dt$pheno
-  
   stopifnot(nrow(x)==length(y))
   
   #output.dt <- data.table(SNP.name = NA, reg.coeff = NA, odds.ratio = NA, sd = NA, p.value = NA)
   
   SNP.names.vect <- c()
-  intercept.vect <- c()
   slope.vect <- c()
   odds.ratio.vect <- c()
   sd.vect <- c()
@@ -498,28 +502,105 @@ univ.glm.test <- function(x,y, order=FALSE){
     #fitting the model
     model <- glm(y ~ x.vect, family="binomial")
     
-    #adding the intercept and slope to the prepared vectors
-    intercept.vect <- c(intercept.vect, summary(model)$coefficients[1])
+    #adding coefficient to the prepared vectors
     slope.vect <- c(slope.vect, summary(model)$coefficients[2])
     
     #adding the odds ratio
+    odds.ratio.vect <- c(odds.ratio.vect, exp(summary(model)$coefficients[2]))
     
     #adding the standard error
+    sd.vect <- c(sd.vect, summary(model)$coefficients[4])
     
     #adding the p-value
+    p.value.vect <- c(p.value.vect ,summary(model)$coefficients[8])
     
     #constructing the output dataframe
-    
-    #order the table if requested
-    
+    output.dt <- data.table(SNP.name = SNP.names.vect, reg.coeff = slope.vect, odds.ratio = odds.ratio.vect, 
+                            sd = sd.vect, p.value = p.value.vect)
     
   }
   
-
+  if (order==TRUE){
+    setorder(output.dt, p.value)
+  }
   
-  
-  
-  
+  return(output.dt)
 }
 ```
+## (c)
+```{r}
+#removing ID, sex and phenotype from the data table to prepare for SNP model
+proc.gdm.dt <- gdm.dt[,!c("ID", "sex", "pheno")]
+pheno.vect <- gdm.dt$pheno
+ordered.bol <- TRUE
 
+#run the SNP association study
+modeled.snp.dt <- univ.glm.test(proc.gdm.dt, pheno.vect, ordered.bol)
+
+#only select significant SNP loci
+sig.outcome.dt <- modeled.snp.dt[ which(modeled.snp.dt[,p.value< 5e-2]==TRUE)]
+
+#finding the most protective coefficient
+sig.outcome.dt[,.SD[which.min(reg.coeff)]]
+
+#95% confidence interval
+beta <- sig.outcome.dt[,.SD[which.min(reg.coeff)]]$reg.coeff
+se.beta <- sig.outcome.dt[,.SD[which.min(reg.coeff)]]$sd
+round(exp(beta + 1.96 * se.beta * c(-1, 1)), 3)
+
+#99% confidence interval
+round(exp(beta + 2.58 * se.beta * c(-1, 1)), 3)
+
+
+#summary statistics of coefficient with biggest risk factor
+sig.outcome.dt[,.SD[which.max(reg.coeff)]]
+
+#95% confidence interval
+beta2 <- sig.outcome.dt[,.SD[which.max(reg.coeff)]]$reg.coeff
+se.beta2 <- sig.outcome.dt[,.SD[which.max(reg.coeff)]]$sd
+round(exp(beta2 + 1.96 * se.beta2 * c(-1, 1)), 3)
+
+#99% confidence interval
+round(exp(beta2 + 2.58 * se.beta2 * c(-1, 1)), 3)
+
+
+```
+## (d)
+```{r}
+
+#read in the data table
+annot.gdm.dt <- data.table(read.delim("GDM.annot.txt"))
+
+#merge the modeled.snp.dt with allele names
+gwas.prelim.dt <- merge(modeled.snp.dt, snp.allele.dt, by.x = "SNP.name", by.y = "coded.allele")
+#merge the remaining two tables
+gwas.dt <- merge(gwas.prelim.dt, annot.gdm.dt, by.x = "rsID", by.y = "snp")
+
+
+#filtering hit alleles
+hit.alleles <- gwas.dt[which(gwas.dt[,p.value<10e-4]==TRUE)]
+
+  
+#report SNP names, effect allele, chromosome number,gene name
+hit.alleles[, c("SNP.name", "reg.coeff", "chrom", "gene")]
+
+
+#function that takes in a rsID, a data table with required fields and a full data table returns the genes within 1MB
+#this function is not self dependent, however the best option to implement this problem
+genes.finder <- function(hits, hit.alleles, gwas.dt){
+  pos.hit <- hit.alleles[rsID==hits,pos]
+  chrom.hit <- hit.alleles[rsID==hits, chrom]
+  max.gen.pos <- pos.hit -1000000
+  min.gen.pos <- pos.hit + 1000000
+  chrom.alleles <- which(gwas.dt[ ,chrom == chrom.hit & (pos> max.gen.pos & pos<min.gen.pos)])
+  return(unique(gwas.dt[which(gwas.dt[ ,chrom == chrom.hit & (pos> max.gen.pos)])]$gene))
+}
+
+#there are 7 hits, however only the first, second and fourth are unique
+genes.finder(hit.alleles$rsID[1], hit.alleles, gwas.dt)
+
+genes.finder(hit.alleles$rsID[2], hit.alleles, gwas.dt)
+
+genes.finder(hit.alleles$rsID[4], hit.alleles, gwas.dt)
+
+```
