@@ -206,7 +206,7 @@ prepare.glmnet <- function(data, formula=~ .) {
 
 #separate desig matrix from outcomes
 ywdbc2.dt <- as.matrix(wdbc2.dt$diagnosis)
-xwdbc2.dt <- prepare.glmnet(wdbc2.dt[,!"diagnosis"])
+xwdbc2.dt <- prepare.glmnet(wdbc2.dt[, !"id"], ~ . -diagnosis )
 
 
 #fit ridge regression model with cross validation
@@ -664,5 +664,119 @@ for(row in 1:nrow(gen.corr)) {
       }
     }
 }
+
+```
+## (b)
+
+Amount of variability explained by the first two principal components is 33%.
+```{r}
+#testing if elements are missing
+stopifnot(is.na(gen.nki.dt)==0)
+
+#run PCA
+pca.gen <- prcomp(t(gen.nki.dt), scale=TRUE)
+
+#Scatter plot
+plot(pca.gen$x[, 1:2], main="Projection of variables on the first 2 PCs")
+
+
+```
+lala
+```{r}
+#percentage of variance explained by the first two components
+perc.expl.gen <- pca.gen$sdev^2 / sum(pca.gen$sdev^2)
+sum(perc.expl.gen[1:2])
+
+#Rule PA2<-10
+#the 4 most different genes 
+pca.gen$x[which(pca.gen$x[, 2]<(-10)), .SD]
+
+
+```
+## (c)
+```{r}
+#patient-wise PCA
+pca.pats.gen <- prcomp(gen.nki.dt, scale=TRUE)
+
+#Screeplot
+screeplot(pca.pats.gen, main="Scree plot")
+
+#keeping the first three principal components
+three.pat.pca <- pca.pats.gen$x[,1:3]
+
+#unadjusted logistic regression
+#PCA 1
+un.pca1 <- glm(nki.dt$Event ~ three.pat.pca[,1], family="binomial")
+#PCA 2
+un.pca2 <- glm(nki.dt$Event ~ three.pat.pca[,2], family="binomial")
+#PCA 3
+un.pca3 <- glm(nki.dt$Event ~ three.pat.pca[,3], family="binomial")
+
+#adjusted logistic regression age, estrogen receptor, grade
+#PCA 1
+ad.pca1 <- glm(nki.dt$Event ~ three.pat.pca[,1]+ nki.dt$Age+ nki.dt$EstrogenReceptor + nki.dt$Grade, family="binomial")
+#PCA 2
+ad.pca2<- glm(nki.dt$Event ~ three.pat.pca[,2]+ nki.dt$Age+ nki.dt$EstrogenReceptor + nki.dt$Grade, family="binomial")
+#PCA 3
+ad.pca3 <- glm(nki.dt$Event ~ three.pat.pca[,3]+ nki.dt$Age+ nki.dt$EstrogenReceptor + nki.dt$Grade, family="binomial")
+summary(ad.pca1)
+
+```
+## (d)
+
+```{r}
+#setting the seed
+set.seed(1)
+
+#separate the outcome and prepare dataset for lasso regression
+ynki.dt <- as.matrix(nki.dt$Event)
+xnki.dt <- prepare.glmnet(nki.dt, ~ . - Event)
+
+#fit lasso regression
+fit.cv.lasso <- cv.glmnet(xnki.dt, ynki.dt, family="binomial")
+
+#running lasso regression only penalizing gene expression
+#penalty = 1
+#no penalty = 0
+#preparing the penalty vector for lasso regression by setting the penalty for the first 5 columns (Diam-Age) to 0
+pen <- rep(1, ncol(nki.dt[, !"Event"]))
+pen[c(1:5)] <- 0
+
+#lasso regression which only penalizes genes
+pen.cv.lasso <- cv.glmnet(xnki.dt, ynki.dt, family="binomial", penalty.factor=pen)
+
+
+
+
+
+
+
+
+```
+
+
+TESTETSTETSTETSTETSTEST
+```{r}
+
+diab01.dt <- fread("data/diab01.txt", stringsAsFactors = TRUE)
+
+diab01.dt.imputed <- copy(diab01.dt) # make a copy to keep the unimputed data around
+for (cname in colnames(diab01.dt.imputed)) {
+ # using `set()` is a fast way to update large data tables
+ set(diab01.dt.imputed, j = cname,
+ value = impute.to.median(diab01.dt.imputed[[cname]]))
+}
+
+idx.pca <- colnames(diab01.dt.imputed[, .SD, .SDcols = sapply(diab01.dt.imputed, is.numeric) & colnames(diab01.dt.imputed) != "Y"]) 
+
+pca.vars <- prcomp(t(diab01.dt.imputed[, .SD, .SDcols = idx.pca]))
+
+perc.expl <- pca.vars$sdev^2 / sum(pca.vars$sdev^2)
+sum(perc.expl[1:2])
+screeplot(pca.vars, main="Scree plot")
+
+plot(pca.vars$x[, 1:2], main="Projection of variables on the first 2 PCs")
+
+xdiab01.dt <- prepare.glmnet(diab01.dt.imputed[,!"PAT"], ~ . - Y)
 
 ```
