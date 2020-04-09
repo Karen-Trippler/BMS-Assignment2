@@ -456,7 +456,6 @@ Similarly to the backward elimination model, the model is not overfit since the 
 gdm.dt <- data.table(read.delim("GDM.raw.txt"))
 
 
-
 #separating the rsIDs and coded allele counts
 colnames.list <- colnames(gdm.dt[, !c("ID", "sex", "pheno")])
 snp.allele.dt <- as.data.table(matrix(unlist(lapply(colnames.list, function(x){strsplit(x,"_")})), ncol=2, byrow = TRUE))
@@ -605,12 +604,174 @@ genes.finder(hit.alleles$rsID[4], hit.alleles, gwas.dt)
 
 ```
 ## (e)
+```{r}
+
+#order the gwas table by SNP names in gdm columns
+gwas.dt<- gwas.dt[order(match(SNP.name, colnames(gdm.dt)[-c(1,2,3)]))]
+
+#ordering of SNPs
+stopifnot(colnames(gdm.dt)[-c(1,2,3)] == gwas.dt$SNP.name)
+
+#p.value < 10e-4
+hit4 <- gwas.dt[p.value < 1e-4]
+#columns of original table which come up as gwas significant
+gdm.sig4.dt <- gdm.dt[, .SD, .SDcols = hit4$SNP.name]
+#calculating the weighted score
+weighted.score4.gwas <- as.matrix(gdm.sig4.dt) %*% hit4$reg.coeff
+#adding the vector to the original data table
+gdm.dt[, weighted4.scores := weighted.score4.gwas]
+#outcome vector
+outcome <- gdm.dt$pheno
+#x weighted scores
+x.weight4 <- gdm.dt$weighted4.scores
+#fit logistic regression model
+log.fit.weight4 <- glm(outcome ~ x.weight4, family="binomial")
+#odds ratio
+exp(summary(log.fit.weight4)$coefficients[2])
+#95% confidence interval
+beta <- summary(log.fit.weight4)$coefficients[2]
+se.beta <- summary(log.fit.weight4)$coefficients[4]
+round(exp(beta + 1.96 * se.beta * c(-1, 1)), 3)
+#p value
+summary(log.fit.weight4)$coefficients[8]
+
+
+
+
+
+#p.value < 10e-4
+hit3 <- gwas.dt[p.value < 1e-3]
+#columns of original table which come up as gwas significant
+gdm.sig3.dt <- gdm.dt[, .SD, .SDcols = hit3$SNP.name]
+#calculating the weighted score
+weighted.score3.gwas <- as.matrix(gdm.sig3.dt) %*% hit3$reg.coeff
+#adding the vector to the original data table
+gdm.dt[, weighted3.scores := weighted.score3.gwas]
+#x weighted scores
+x.weight3 <- gdm.dt$weighted3.scores
+#fit logistic regression model
+log.fit.weight3 <- glm(outcome ~ x.weight3, family="binomial")
+#odds ratio
+exp(summary(log.fit.weight3)$coefficients[2])
+#95% confidence interval
+beta <- summary(log.fit.weight3)$coefficients[2]
+se.beta <- summary(log.fit.weight3)$coefficients[4]
+round(exp(beta + 1.96 * se.beta * c(-1, 1)), 3)
+#p value
+summary(log.fit.weight3)$coefficients[8]
+
+
+
+
+#FTO gene
+hitfto <- gwas.dt[gene == "FTO"]
+#columns of original table which come up as gwas significant
+gdm.sigfto.dt <- gdm.dt[, .SD, .SDcols = hitfto$SNP.name]
+#calculating the weighted score
+weighted.scorefto.gwas <- as.matrix(gdm.sigfto.dt) %*% hitfto$reg.coeff
+#adding the vector to the original data table
+gdm.dt[, weightedFTO.scores := weighted.scorefto.gwas]
+#x weighted score
+x.weightfto <- gdm.dt$weightedFTO.scores
+#fit logistic regression model
+log.fit.weightfto <- glm(outcome ~ x.weightfto, family="binomial")
+#odds ratio
+exp(summary(log.fit.weightfto)$coefficients[2])
+#95% confidence interval
+beta <- summary(log.fit.weightfto)$coefficients[2]
+se.beta <- summary(log.fit.weightfto)$coefficients[4]
+round(exp(beta + 1.96 * se.beta * c(-1, 1)), 3)
+#p value
+summary(log.fit.weightfto)$coefficients[8]
+
+```
+
 
 ## (f)
+```{r}
+#read in the data
+gdm.test.dt <- data.table(read.delim("GDM.test.txt"))
+
+#columns of original table which come up as gwas significant
+gdm.test.sig4.dt <- gdm.test.dt[, .SD, .SDcols = hit4$rsID]
+#calculating the weighted score
+weighted.test.score4.gwas <- as.matrix(gdm.test.sig4.dt) %*% hit4$reg.coeff
+#adding the vector to the original data table
+gdm.test.dt[, weighted4.scores := weighted.test.score4.gwas]
+#outcome vector
+outcome <- gdm.test.dt$pheno
+#x weighted scores
+x.weight4 <- gdm.test.dt$weighted4.scores
+#fit logistic regression model
+log.fit.weight4 <- glm(outcome ~ x.weight4, family="binomial")
+#odds ratio
+exp(summary(log.fit.weight4)$coefficients[2])
+#95% confidence interval
+beta <- summary(log.fit.weight4)$coefficients[2]
+se.beta <- summary(log.fit.weight4)$coefficients[4]
+round(exp(beta + 1.96 * se.beta * c(-1, 1)), 3)
+#p value
+summary(log.fit.weight4)$coefficients[8]
+
+
+#columns of original table which come up as gwas significant
+gdm.test.sig3.dt <- gdm.test.dt[, .SD, .SDcols = hit3$rsID]
+#calculating the weighted score
+weighted.test.score3.gwas <- as.matrix(gdm.test.sig3.dt) %*% hit3$reg.coeff
+#adding the vector to the original data table
+gdm.test.dt[, weighted3.scores := weighted.test.score3.gwas]
+#outcome vector
+outcome <- gdm.test.dt$pheno
+#x weighted scores
+x.weight3 <- gdm.test.dt$weighted3.scores
+#fit logistic regression model
+log.fit.weight3 <- glm(outcome ~ x.weight3, family="binomial")
+#odds ratio
+exp(summary(log.fit.weight3)$coefficients[2])
+#95% confidence interval
+beta <- summary(log.fit.weight3)$coefficients[2]
+se.beta <- summary(log.fit.weight3)$coefficients[4]
+round(exp(beta + 1.96 * se.beta * c(-1, 1)), 3)
+#p value
+summary(log.fit.weight3)$coefficients[8]
+
+
+
+#columns of original table which come up as gwas significant
+gdm.test.sigfto.dt <- gdm.test.dt[, .SD, .SDcols = hitfto$rsID]
+#calculating the weighted score
+weighted.test.scorefto.gwas <- as.matrix(gdm.test.sigfto.dt) %*% hitfto$reg.coeff
+#adding the vector to the original data table
+gdm.test.dt[, weightedfto.scores := weighted.test.scorefto.gwas]
+#outcome vector
+outcome <- gdm.test.dt$pheno
+#x weighted scores
+x.weightfto <- gdm.test.dt$weightedfto.scores
+#fit logistic regression model
+log.fit.weightfto <- glm(outcome ~ x.weightfto, family="binomial")
+#odds ratio
+exp(summary(log.fit.weightfto)$coefficients[2])
+#95% confidence interval
+beta <- summary(log.fit.weightfto)$coefficients[2]
+se.beta <- summary(log.fit.weightfto)$coefficients[4]
+round(exp(beta + 1.96 * se.beta * c(-1, 1)), 3)
+#p value
+summary(log.fit.weightfto)$coefficients[8]
+
+
+```
+
 
 ## (g)
+```{r}
+
+```
+
 
 ## (h)
+```{r}
+
+```
 
 # Problem 4
 ## (a)
@@ -681,7 +842,7 @@ plot(pca.gen$x[, 1:2], main="Projection of variables on the first 2 PCs")
 
 
 ```
-lala
+
 ```{r}
 #percentage of variance explained by the first two components
 perc.expl.gen <- pca.gen$sdev^2 / sum(pca.gen$sdev^2)
@@ -742,41 +903,8 @@ fit.cv.lasso <- cv.glmnet(xnki.dt, ynki.dt, family="binomial")
 pen <- rep(1, ncol(nki.dt[, !"Event"]))
 pen[c(1:5)] <- 0
 
-#lasso regression which only penalizes genes
-pen.cv.lasso <- cv.glmnet(xnki.dt, ynki.dt, family="binomial", penalty.factor=pen)
+#lasso regression which only penalizes genes(does not run)
+#pen.cv.lasso <- cv.glmnet(xnki.dt, ynki.dt, family="binomial", penalty.factor=pen)
 
-
-
-
-
-
-
-
-```
-
-
-TESTETSTETSTETSTETSTEST
-```{r}
-
-diab01.dt <- fread("data/diab01.txt", stringsAsFactors = TRUE)
-
-diab01.dt.imputed <- copy(diab01.dt) # make a copy to keep the unimputed data around
-for (cname in colnames(diab01.dt.imputed)) {
- # using `set()` is a fast way to update large data tables
- set(diab01.dt.imputed, j = cname,
- value = impute.to.median(diab01.dt.imputed[[cname]]))
-}
-
-idx.pca <- colnames(diab01.dt.imputed[, .SD, .SDcols = sapply(diab01.dt.imputed, is.numeric) & colnames(diab01.dt.imputed) != "Y"]) 
-
-pca.vars <- prcomp(t(diab01.dt.imputed[, .SD, .SDcols = idx.pca]))
-
-perc.expl <- pca.vars$sdev^2 / sum(pca.vars$sdev^2)
-sum(perc.expl[1:2])
-screeplot(pca.vars, main="Scree plot")
-
-plot(pca.vars$x[, 1:2], main="Projection of variables on the first 2 PCs")
-
-xdiab01.dt <- prepare.glmnet(diab01.dt.imputed[,!"PAT"], ~ . - Y)
 
 ```
