@@ -604,3 +604,65 @@ genes.finder(hit.alleles$rsID[2], hit.alleles, gwas.dt)
 genes.finder(hit.alleles$rsID[4], hit.alleles, gwas.dt)
 
 ```
+## (e)
+
+## (f)
+
+## (g)
+
+## (h)
+
+# Problem 4
+## (a)
+```{r, warning=FALSE}
+library(corrplot)
+
+#load the data set
+nki.dt <- data.table(read.csv("nki.csv"))
+
+#separate genes from remainder of data
+gen.nki.dt <- nki.dt[, c(7:76)]
+
+#compute the correlation matrix
+gen.corr <- cor(gen.nki.dt[, .SD, .SDcols = sapply(gen.nki.dt, is.numeric)])
+
+#in order to adjust the writing size on the axis, a png file has to be safed
+png(height=1200, width=1500, pointsize=15, file="overlap.png")
+corrplot(gen.corr, diag = FALSE, method = "color", title = "NKI Correlation Matrix", order = "AOE", tl.col = "black", number.cex = 1)
+
+
+
+```
+The correlation matrix for dataset NKI is displayed below. If the image does not display correctly, please either find the saved image "overlay.png" or comment out the line starting with png(...) above (the adjusted font size will go missing)
+![Correlation Matrix](overlap.png)
+
+Identify the unique pairs of variables that have a correlation coefficient >0.8. My approach is based on the assumtion that no two correlation coefficients between two different variables are exactly equal. This assumption is reasonable since the correlation coefficients are recorded till the 8th significant figure which makes it highly unlikely that they would be the same.
+```{r}
+#create vectors for column and row names
+r.nam <- row.names(gen.corr)
+c.nam <- colnames(gen.corr)
+#create vector that will hold the correlation coefficients that have been seen before
+val.pair <- c()
+#create opposite of %in%
+`%notin%` <- Negate(`%in%`)
+
+# Loop over gen.corr
+for(row in 1:nrow(gen.corr)) {
+    for(col in 1:ncol(gen.corr)) {
+      #test if the correlation coefficient is greater than 0.8 (absolute)
+      if(abs(gen.corr[row,col])>0.8){
+        #test, if this is the correlation coefficient with itself
+        if(row!=col){
+          #test, if this correlation coefficient has been seen before
+          if(gen.corr[row, col] %notin% val.pair){
+            #print the results
+            print(paste(r.nam[row], "and", c.nam[col], "have a correlation coefficient of",round(gen.corr[row, col],3)))
+            #add the correlation coefficient to the list of correff, that have been seen before
+            val.pair <- c(val.pair, gen.corr[row, col])
+          }
+        }
+      }
+    }
+}
+
+```
