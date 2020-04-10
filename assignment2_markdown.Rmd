@@ -620,12 +620,8 @@ gdm.sig4.dt <- gdm.dt[, .SD, .SDcols = hit4$SNP.name]
 weighted.score4.gwas <- as.matrix(gdm.sig4.dt) %*% hit4$reg.coeff
 #adding the vector to the original data table
 gdm.dt[, weighted4.scores := weighted.score4.gwas]
-#outcome vector
-outcome <- gdm.dt$pheno
-#x weighted scores
-x.weight4 <- gdm.dt$weighted4.scores
 #fit logistic regression model
-log.fit.weight4 <- glm(outcome ~ x.weight4, family="binomial")
+log.fit.weight4 <- glm(pheno ~ weighted4.scores ,data=gdm.dt, family="binomial")
 #odds ratio
 exp(summary(log.fit.weight4)$coefficients[2])
 #95% confidence interval
@@ -647,10 +643,8 @@ gdm.sig3.dt <- gdm.dt[, .SD, .SDcols = hit3$SNP.name]
 weighted.score3.gwas <- as.matrix(gdm.sig3.dt) %*% hit3$reg.coeff
 #adding the vector to the original data table
 gdm.dt[, weighted3.scores := weighted.score3.gwas]
-#x weighted scores
-x.weight3 <- gdm.dt$weighted3.scores
 #fit logistic regression model
-log.fit.weight3 <- glm(outcome ~ x.weight3, family="binomial")
+log.fit.weight3 <- glm(pheno ~ weighted3.scores,data=gdm.dt, family="binomial")
 #odds ratio
 exp(summary(log.fit.weight3)$coefficients[2])
 #95% confidence interval
@@ -671,10 +665,8 @@ gdm.sigfto.dt <- gdm.dt[, .SD, .SDcols = hitfto$SNP.name]
 weighted.scorefto.gwas <- as.matrix(gdm.sigfto.dt) %*% hitfto$reg.coeff
 #adding the vector to the original data table
 gdm.dt[, weightedFTO.scores := weighted.scorefto.gwas]
-#x weighted score
-x.weightfto <- gdm.dt$weightedFTO.scores
 #fit logistic regression model
-log.fit.weightfto <- glm(outcome ~ x.weightfto, family="binomial")
+log.fit.weightfto <- glm(pheno ~ weightedFTO.scores,data=gdm.dt, family="binomial")
 #odds ratio
 exp(summary(log.fit.weightfto)$coefficients[2])
 #95% confidence interval
@@ -692,6 +684,12 @@ summary(log.fit.weightfto)$coefficients[8]
 #read in the data
 gdm.test.dt <- data.table(read.delim("GDM.test.txt"))
 
+#order the gwas table by SNP names in gdm columns
+gwas.dt<- gwas.dt[order(match(rsID, colnames(gdm.test.dt)[-c(1,2,3)]))]
+
+#ordering of SNPs(PUT BACK INNNNNNNNNNNNNNNNNNN)
+#stopifnot(colnames(gdm.test.dt)[-c(1,2,3)] == gwas.dt$rsID)
+
 #columns of original table which come up as gwas significant
 gdm.test.sig4.dt <- gdm.test.dt[, .SD, .SDcols = hit4$rsID]
 #calculating the weighted score
@@ -701,17 +699,17 @@ gdm.test.dt[, weighted4.scores := weighted.test.score4.gwas]
 #outcome vector
 outcome <- gdm.test.dt$pheno
 #x weighted scores
-x.weight4 <- gdm.test.dt$weighted4.scores
+x.weight.test.4 <- gdm.test.dt$weighted4.scores
 #fit logistic regression model
-log.fit.weight4 <- glm(outcome ~ x.weight4, family="binomial")
+log.fit.weight.test.4 <- glm(outcome ~ x.weight.test.4, family="binomial")
 #odds ratio
-exp(summary(log.fit.weight4)$coefficients[2])
+exp(summary(log.fit.weight.test.4)$coefficients[2])
 #95% confidence interval
-beta <- summary(log.fit.weight4)$coefficients[2]
-se.beta <- summary(log.fit.weight4)$coefficients[4]
+beta <- summary(log.fit.weight.test.4)$coefficients[2]
+se.beta <- summary(log.fit.weight.test.4)$coefficients[4]
 round(exp(beta + 1.96 * se.beta * c(-1, 1)), 3)
 #p value
-summary(log.fit.weight4)$coefficients[8]
+summary(log.fit.weight.test.4)$coefficients[8]
 
 
 #columns of original table which come up as gwas significant
@@ -720,20 +718,18 @@ gdm.test.sig3.dt <- gdm.test.dt[, .SD, .SDcols = hit3$rsID]
 weighted.test.score3.gwas <- as.matrix(gdm.test.sig3.dt) %*% hit3$reg.coeff
 #adding the vector to the original data table
 gdm.test.dt[, weighted3.scores := weighted.test.score3.gwas]
-#outcome vector
-outcome <- gdm.test.dt$pheno
 #x weighted scores
-x.weight3 <- gdm.test.dt$weighted3.scores
+x.weight.test.3 <- gdm.test.dt$weighted3.scores
 #fit logistic regression model
-log.fit.weight3 <- glm(outcome ~ x.weight3, family="binomial")
+log.fit.weight.test.3 <- glm(outcome ~ x.weight.test.3, family="binomial")
 #odds ratio
-exp(summary(log.fit.weight3)$coefficients[2])
+exp(summary(log.fit.weight.test.3)$coefficients[2])
 #95% confidence interval
-beta <- summary(log.fit.weight3)$coefficients[2]
-se.beta <- summary(log.fit.weight3)$coefficients[4]
+beta <- summary(log.fit.weight.test.3)$coefficients[2]
+se.beta <- summary(log.fit.weight.test.3)$coefficients[4]
 round(exp(beta + 1.96 * se.beta * c(-1, 1)), 3)
 #p value
-summary(log.fit.weight3)$coefficients[8]
+summary(log.fit.weight.test.3)$coefficients[8]
 
 
 
@@ -742,34 +738,114 @@ gdm.test.sigfto.dt <- gdm.test.dt[, .SD, .SDcols = hitfto$rsID]
 #calculating the weighted score
 weighted.test.scorefto.gwas <- as.matrix(gdm.test.sigfto.dt) %*% hitfto$reg.coeff
 #adding the vector to the original data table
-gdm.test.dt[, weightedfto.scores := weighted.test.scorefto.gwas]
-#outcome vector
-outcome <- gdm.test.dt$pheno
+gdm.test.dt[, weightedFTO.scores := weighted.test.scorefto.gwas]
 #x weighted scores
-x.weightfto <- gdm.test.dt$weightedfto.scores
+x.weight.test.fto <- gdm.test.dt$weightedfto.scores
 #fit logistic regression model
-log.fit.weightfto <- glm(outcome ~ x.weightfto, family="binomial")
+log.fit.weight.test.fto <- glm(outcome ~ x.weight.test.fto, family="binomial")
 #odds ratio
-exp(summary(log.fit.weightfto)$coefficients[2])
+exp(summary(log.fit.weight.test.fto)$coefficients[2])
 #95% confidence interval
-beta <- summary(log.fit.weightfto)$coefficients[2]
-se.beta <- summary(log.fit.weightfto)$coefficients[4]
+beta <- summary(log.fit.weight.test.fto)$coefficients[2]
+se.beta <- summary(log.fit.weight.test.fto)$coefficients[4]
 round(exp(beta + 1.96 * se.beta * c(-1, 1)), 3)
 #p value
-summary(log.fit.weightfto)$coefficients[8]
+summary(log.fit.weight.test.fto)$coefficients[8]
 
 
 ```
 
-
 ## (g)
 ```{r}
+#789 predicted results
+#predicting the testing outcomes
+new4 <- data.frame(weighted4.scores = gdm.test.dt$weighted4.scores)
+pred.weight4 <- predict(log.fit.weight4, newdata=new4, type="response")
+
+new3 <- data.frame(weighted3.scores = gdm.test.dt$weighted3.scores)
+pred.weight3 <- predict(log.fit.weight3, newdata=new3, type="response")
+
+newfto <- data.frame(weightedFTO.scores = gdm.test.dt$weightedFTO.scores)
+pred.weightfto <- predict(log.fit.weightfto, newdata=newfto, type="response")
+
+
+#computing the log-likelihood
+#p value < 10e-4
+sum(log(pred.weight4[gdm.test.dt[,pheno==1]])) + sum(log(pred.weight4[gdm.test.dt[, pheno==0]]))
+#p value < 10e-3
+sum(log(pred.weight3[gdm.test.dt[,pheno==1]])) + sum(log(pred.weight3[gdm.test.dt[, pheno==0]]))
+#gene FTO
+sum(log(pred.weightfto[gdm.test.dt[,pheno==1]])) + sum(log(pred.weightfto[gdm.test.dt[, pheno==0]]))
+
 
 ```
 
 
 ## (h)
 ```{r}
+#read in the data
+gwas2.dt <- fread("GDM.study2.txt")
+gwas1.dt <- gwas.dt
+
+#checking input file that all alleles are present
+stopifnot(gwas1.dt$rsID %in% gwas2.dt$snp)
+stopifnot(gwas2.dt$snp %in% gwas1.dt$rsID)
+
+#order by snp/rsID
+gwas1.dt <- gwas1.dt[order(rsID)]
+gwas2.dt <- gwas2.dt[order(snp)]
+
+#checking the ordering is the same
+stopifnot(all.equal(gwas1.dt$rsID, gwas2.dt$snp))
+
+#harmonizing the data
+both.ok <- gwas1.dt$ref.allele == gwas2.dt$effect.allele 
+flipped <- gwas1.dt$ref.allele == gwas2.dt$other.allele
+unmatched <- both.ok == flipped
+
+table(both.ok, flipped)
+
+#it can be seen that 2 alleles do not match after flipping, these twwo are therefore discarded
+gwas1.dt <- gwas1.dt[!which(unmatched==TRUE)]
+gwas2.dt <- gwas2.dt[!which(unmatched==TRUE)]
+
+both.ok2 <- gwas1.dt$ref.allele == gwas2.dt$effect.allele 
+flipped2 <- gwas1.dt$ref.allele == gwas2.dt$other.allele
+
+table(both.ok2, flipped2)
+
+#switching signs for second study
+beta1 <- gwas1.dt$reg.coeff
+beta2 <- gwas2.dt$beta
+beta2[flipped2] <- -beta2[flipped2]
+
+#meta analysis by inverse variance weighting
+weight.gwas1 <- 1/gwas1.dt$sd^2
+weight.gwas2 <- 1/gwas2.dt$se^2
+
+head(weight.gwas1)
+head(weight.gwas2)
+
+```
+From the weighted scores, it seems like the first (original) study is more powered.
+Creating the meta-analysis effect size and summary table.
+```{r}
+#meta analysis effect size
+beta.ma <- (weight.gwas1 *beta1 + weight.gwas2 * beta2)/(weight.gwas1+weight.gwas2)
+se.ma <- sqrt(1/(weight.gwas1 + weight.gwas2))
+
+#calculating p values
+pval.ma <- 2* pnorm(abs(beta.ma/se.ma), lower.tail = FALSE)
+
+#creating a summary table
+ma.summary <- data.table(rsID = gwas1.dt$rsID, p.val = pval.ma, beta = beta.ma, se = se.ma )
+
+#select significant p-values
+sig.ma.summary <- ma.summary[p.val<1e-4]
+
+#showing the ordered data table
+sig.ma.summary[order(p.val)]
+
 
 ```
 
@@ -790,8 +866,6 @@ gen.corr <- cor(gen.nki.dt[, .SD, .SDcols = sapply(gen.nki.dt, is.numeric)])
 #in order to adjust the writing size on the axis, a png file has to be safed
 png(height=1200, width=1500, pointsize=15, file="overlap.png")
 corrplot(gen.corr, diag = FALSE, method = "color", title = "NKI Correlation Matrix", order = "AOE", tl.col = "black", number.cex = 1)
-
-
 
 ```
 The correlation matrix for dataset NKI is displayed below. If the image does not display correctly, please either find the saved image "overlay.png" or comment out the line starting with png(...) above (the adjusted font size will go missing)
